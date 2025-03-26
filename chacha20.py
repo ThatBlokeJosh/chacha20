@@ -4,22 +4,22 @@ import struct
 class CHACHA20():
     key = 0
     iv = 0
+    ic = 0
     OVER = 0xffffffff
 
-    def __init__(self, key, iv):
+    def __init__(self, key, iv, ic):
         self.key = key
         self.iv = iv
+        self.ic = ic
 
-    def split(self, key, length):
-        num = key
-
-        num = num & ((1 << length) - 1)
+    def split(self, key, length, endians="little"):
+        bytes = key.to_bytes(length//8, 'little')
         chunks = []
         for i in range(length//32):
-            chunk = (num >> (length - (32 * (i+1)))) & self.OVER
-            chunks.append(chunk)
-
-        return chunks
+            num = int.from_bytes(bytes[i*4:(i+1)*4])
+            chunks.append(num)
+        
+        return chunks[::-1]
 
     def rotate(self, v, c):
         return ((v << c) & self.OVER) | v >> (32 - c)
@@ -48,35 +48,47 @@ class CHACHA20():
         self.qr(x, 2, 7,  8, 13)
         self.qr(x, 3, 4,  9, 14)
 
-    def gen_key(self, counter=0):
+    def gen_key(self, counter=1):
         old_key = [0] * 16
         old_key[:4] = (0x61707865, 0x3320646E, 0x79622D32, 0x6B206574)
-        old_key[4:12] = struc
+        old_key[4:12] = self.split(self.key, 256)
         old_key[12] = counter
         old_key[13:16] = self.split(self.iv, 96)
-        print([hex(old_key[i]) for i in range(len(old_key))])
 
         new_key = list(old_key)
+        key_stream = []
 
         for i in range(10):
             self.double_r(new_key)
 
         for i in range(len(new_key)):
-            new_key[i] += old_key[i]
-        return new_key
+            new_key[i] = (new_key[i] + old_key[i]) & self.OVER
+            byte_array = new_key[i].to_bytes(4, "little")
+            for byte in byte_array:
+                key_stream.append(byte)
+        return key_stream
+    
+    def xor(self, text):
+        length = len(text)
+        block = length//64
+        res = bytearray([])
+        
+        for i in range(block):
+            key = self.gen_key(self.ic + i)
+            for j in range(len(key)):
+                res.append(key[j] ^ text[j])
+                
+        if length % 64 != 0:
+            key = self.gen_key(self.ic + block + 1)
+            rest = text[64*block:]
+            for j in range(len(rest)):
+                res.append(key[j] ^ rest[j])
+            
+        return res
 
-    def encrypt(self, open_text, ic=0):
-        for i in range(2):
-            key = self.gen_key(ic + i)
-            print([hex(key[i]) for i in range(len(key))])
 
-    def dencrypt(self, cipher_text):
-        key = self.gen_key()
-        return [key[i % len(key)] ^ cipher_text[i] for i in range(len(cipher_text))]
-
-
-cha = CHACHA20(
-    0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F,
-    0x000000000000004A00000000)
-x = cha.encrypt(b'Ladies and Gentlm', 1)
+cha = CHACHA20(0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F, 0x000000000000004A00000000, 1)
+x = cha.xor(b"Hello World.")
 print(x)
+y = cha.xor(x)
+print(y)

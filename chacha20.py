@@ -18,7 +18,7 @@ class CHACHA20():
         for i in range(length//32):
             num = int.from_bytes(bytes[i*4:(i+1)*4])
             chunks.append(num)
-        
+
         return chunks[::-1]
 
     def rotate(self, v, c):
@@ -67,28 +67,29 @@ class CHACHA20():
             for byte in byte_array:
                 key_stream.append(byte)
         return key_stream
-    
+
     def xor(self, text):
         length = len(text)
         block = length//64
         res = bytearray([])
-        
+
         for i in range(block):
             key = self.gen_key(self.ic + i)
             for j in range(len(key)):
                 res.append(key[j] ^ text[j])
-                
+
         if length % 64 != 0:
             key = self.gen_key(self.ic + block + 1)
             rest = text[64*block:]
             for j in range(len(rest)):
                 res.append(key[j] ^ rest[j])
-            
+
         return res
 
 
-cha = CHACHA20(0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F, 0x000000000000004A00000000, 1)
-x = cha.xor(b"Hello World.")
+cha = CHACHA20(0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F,
+               0x000000000000004A00000000, 1)
+x = cha.xor(b"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")
 print(x)
 y = cha.xor(x)
 print(y)

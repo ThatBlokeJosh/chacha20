@@ -79,7 +79,7 @@ class CHACHA20():
                 res.append(key[j] ^ text[j])
 
         if length % 64 != 0:
-            key = self.gen_key(self.ic + block + 1)
+            key = self.gen_key(self.ic + block)
             rest = text[64*block:]
             for j in range(len(rest)):
                 res.append(key[j] ^ rest[j])
@@ -90,6 +90,6 @@ class CHACHA20():
 cha = CHACHA20(0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F,
                0x000000000000004A00000000, 1)
 x = cha.xor(b"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")
-print(x)
+print(x.hex())
 y = cha.xor(x)
 print(y)
